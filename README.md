@@ -15,7 +15,7 @@ Sakhi is a multi-faceted AI companion designed to assist users in various scenar
 ## Tech Stack
 
 *   **Frontend**: HTML, CSS, JavaScript for dashboard and UI.
-*   **Face Recognition**: Face-api.js trained on TensorFlow ML models with Supabase backend for face data storage.
+*   **Face Recognition**: Face-api.js trained on TensorFlow ML models with Supabase backend for vector face data storage.
 *   **Automation & Alerts**: IFTTT and Adafruit IO for SOS alerts and automation.
 *   **Hardware**:
     *   NodeMCU for IFTTT triggers and control actions.
