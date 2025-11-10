@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recognize Face - Sakhi</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Poppins', 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            min-height: 100vh;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 50px 40px;
+            border-radius: 25px;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            text-align: center;
+            position: relative;
+        }
+        h1 {
+            font-size: 3em;
+            font-weight: 900;
+            background: linear-gradient(135deg, #00d4ff, #0099ff, #00d4ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 30px;
+            letter-spacing: -1px;
+            text-shadow: 0 10px 30px rgba(0, 212, 255, 0.2);
+        }
+        #video-container {
+            position: relative;
+            width: 640px;
+            height: 480px;
+            margin: 0 auto 25px;
+            border-radius: 15px;
+            overflow: hidden;
+            border: 3px solid #00d4ff;
+            box-shadow: 0 10px 40px rgba(0, 212, 255, 0.2);
+        }
+        video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform: scaleX(-1);
+        }
+        #loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 15px;
+            z-index: 10;
+        }
+        .spinner {
+            border: 8px solid rgba(255, 255, 255, 0.3);
+            border-top: 8px solid #00d4ff;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        #loading-message {
+            font-size: 1.2em;
+            color: #00d4ff;
+        }
+        .exit-btn {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ff4444 100%);
+            color: white;
+            padding: 16px 50px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.1em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(255, 107, 107, 0.3);
+            letter-spacing: 1px;
+            margin-top: 30px;
+            display: inline-block;
+            text-decoration: none;
+        }
+        .exit-btn:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 15px 40px rgba(255, 107, 107, 0.5);
+        }
+        #register-btn {
+            background: linear-gradient(135deg, #00d4ff 0%, #0099ff 100%);
+            color: white;
+            padding: 16px 50px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.1em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(0, 212, 255, 0.3);
+            letter-spacing: 1px;
+            margin-top: 15px;
+            display: none; /* Hidden by default */
+            text-decoration: none;
+        }
+        #register-btn:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 15px 40px rgba(0, 212, 255, 0.5);
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="face-api.min.js"></script>
+    <script src="config.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Recognize Face</h1>
+        <div id="video-container">
+            <video id="video" width="640" height="480" autoplay muted playsinline></video>
+            <div id="loading-overlay">
+                <div class="spinner"></div>
+                <p id="loading-message">Loading AI models...</p>
+            </div>
+        </div>
+        <div id="recognition-result" style="font-size: 2em; margin-top: 20px; color: #00d4ff; height: 40px;"></div>
+        <a id="register-btn" href="register.html">Register New Person</a>
+        <a href="final_ui.html" class="exit-btn">← EXIT</a>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const videoContainer = document.getElementById('video-container');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const loadingMessage = document.getElementById('loading-message');
+
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let faceMatcher = null;
+
+        async function start() {
+            try {
+                loadingMessage.innerText = 'Loading AI models...';
+                await Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri('models'),
+                    faceapi.nets.faceLandmark68Net.loadFromUri('models'),
+                    faceapi.nets.faceRecognitionNet.loadFromUri('models')
+                ]);
+
+                loadingMessage.innerText = 'Loading registered faces...';
+                const labeledFaceDescriptors = await loadRegisteredFaces();
+
+                if (labeledFaceDescriptors.length === 0) {
+                    alert('No faces are registered. Please use the registration page to add a user first.');
+                    loadingMessage.innerText = 'Error: No registered faces found.';
+                    return;
+                }
+
+                faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors, 0.6);
+
+                loadingMessage.innerText = 'Starting camera...';
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+            } catch (err) {
+                console.error("Error during startup:", err);
+                loadingMessage.innerText = `Error: ${err.message}`;
+            }
+        }
+
+        async function loadRegisteredFaces() {
+            const { data, error } = await supabaseClient
+                .from('face_descriptors')
+                .select(`embedding, profiles ( name )`);
+
+            if (error) {
+                console.error('Error fetching face descriptors:', error);
+                return [];
+            }
+
+            return data
+                .map(fd => {
+                    if (!fd.embedding || !fd.profiles) {
+                        return null;
+                    }
+
+                    let embeddingArray;
+                    if (typeof fd.embedding === 'string') {
+                        try {
+                            embeddingArray = JSON.parse(fd.embedding);
+                        } catch (e) {
+                            console.error('Failed to parse embedding string:', fd.embedding);
+                            return null;
+                        }
+                    } else {
+                        embeddingArray = fd.embedding;
+                    }
+
+                    if (!Array.isArray(embeddingArray) || embeddingArray.length !== 128) {
+                        console.warn('Skipping invalid face descriptor:', fd);
+                        return null;
+                    }
+
+                    const descriptor = new Float32Array(embeddingArray);
+                    return new faceapi.LabeledFaceDescriptors(fd.profiles.name, [descriptor]);
+                })
+                .filter(Boolean);
+        }
+
+        video.addEventListener('play', () => {
+            const recognitionResult = document.getElementById('recognition-result');
+            const registerBtn = document.getElementById('register-btn');
+            loadingOverlay.style.display = 'none';
+            const canvas = faceapi.createCanvasFromMedia(video);
+            videoContainer.append(canvas);
+            const displaySize = { width: video.width, height: video.height };
+            faceapi.matchDimensions(canvas, displaySize);
+
+            setInterval(async () => {
+                const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+                    .withFaceLandmarks()
+                    .withFaceDescriptor();
+                
+                canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+
+                if (detection) {
+                    const resizedDetection = faceapi.resizeResults(detection, displaySize);
+                    const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
+
+                    if (bestMatch.label === 'unknown') {
+                        recognitionResult.innerText = 'Unknown person detected. Please register.';
+                        registerBtn.style.display = 'inline-block';
+                    } else {
+                        recognitionResult.innerText = `Welcome, ${bestMatch.label}!`;
+                        registerBtn.style.display = 'none';
+                        const box = resizedDetection.detection.box;
+                        const drawBox = new faceapi.draw.DrawBox(box, { label: bestMatch.toString() });
+                        drawBox.draw(canvas);
+                    }
+                } else {
+                    recognitionResult.innerText = '';
+                    registerBtn.style.display = 'none';
+                }
+            }, 200);
+        });
+
+        start();
+    </script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+fastapi 
+uvicorn[standard] 
+pymongo[srv]
+python-dotenv
+google-generativeai
+requests
+pydantic
+vosk
+pyaudio
+pygame
+openai
