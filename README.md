@@ -1,4 +1,4 @@
-# Sakhi - Your AI Companion
+# Sakhi
 
 Sakhi is a multi-faceted AI companion designed to assist users in various scenarios, including providing support for individuals with visual impairments and Alzheimer's, as well as acting as a personal assistant. The project integrates a web-based frontend, a Python backend, and ESP32-powered hardware for a complete interactive experience.
 
