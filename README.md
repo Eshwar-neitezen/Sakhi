@@ -14,10 +14,12 @@ Sakhi is a multi-faceted AI companion designed to assist users in various scenar
 
 ## Tech Stack
 
-*   **Frontend**: HTML, CSS, JavaScript, Face-API.js
-*   **Backend**: Python (Flask/FastAPI - *assumed*), Supabase
-*   **Hardware**: ESP32
-*   **IoT Platform**: Adafruit IO
+*   **Frontend**: HTML, CSS, JavaScript for dashboard and UI.
+*   **Face Recognition**: Face-api.js trained on TensorFlow ML models with Supabase backend for face data storage.
+*   **Automation & Alerts**: IFTTT and Adafruit IO for SOS alerts and automation.
+*   **Hardware**:
+    *   NodeMCU for IFTTT triggers and control actions.
+    *   ESP32 for motor control via Dabble and Joystick, and Google Assistant voice trigger.
 
 ## Getting Started
 
